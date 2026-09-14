@@ -1,0 +1,49 @@
+ninja_required_version = 1.8.2
+
+cc = clang
+cflags = -target x86_64-linux-musl --sysroot=/home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64 -fPIC -I../include -I../../include
+swift_cflags = -target x86_64-swift-linux-musl -sdk /home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64 -resource-dir /home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64/usr/lib/swift_static -Xclang-linker -resource-dir -Xclang-linker /home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64/usr/lib/swift/clang -module-cache-path /tmp/swift-cache -I../include -I../../include -Ibuilddir/arkrt -module-alias Network=ArkNetwork
+swift_frontend_cflags = -target x86_64-swift-linux-musl -sdk /home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64 -resource-dir /home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64/usr/lib/swift_static -module-cache-path /tmp/swift-cache -I../include -I../../include -Ibuilddir/arkrt -module-alias Network=ArkNetwork
+ldflags = -target x86_64-linux-musl --sysroot=/home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64
+
+efi_cflags = -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar -fno-builtin -I../prebuilts/efi/inc -I../prebuilts/efi/inc/x86_64 -I../prebuilts/efi/inc/protocol
+rule efi_cc
+  command = $cc $efi_cflags -c $in -o $out
+  description = EFI_CC $out
+
+rule efi_link
+  command = ld.lld -flavor link -subsystem:efi_application -entry:efi_main $in -out:$out
+  description = EFI_LINK $out
+
+rule cc
+  command = $cc $cflags -c $in -o $out
+  description = CC $out
+
+rule nasm
+  command = nasm -f bin $in -o $out
+  description = NASM $out
+
+rule swiftc_emit_module
+  command = swiftc -frontend $swift_frontend_cflags $swift_args -module-name $module_name $parse_as_library -emit-module -emit-module-path $out $in
+  description = SWIFTC IFACE $module_name
+
+rule swiftc_module
+  command = swiftc -frontend $swift_frontend_cflags $swift_args -module-name $module_name $parse_as_library -c -primary-file $in $swift_context -o $out
+  description = SWIFTC MODULE $module_name $in
+
+rule link
+  command = $cc $ldflags $in -o $out
+  description = LINK $out
+
+rule swift_link
+  command = swiftc -target x86_64-swift-linux-musl -sdk /home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64 -static-stdlib -resource-dir /home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64/usr/lib/swift_static -Xclang-linker -resource-dir -Xclang-linker /home/arkos/repo/arkos/aake_src/prebuilts/Swift/swift-6.3.2-RELEASE_static-linux-0.1.0/swift-linux-musl/musl-1.2.5.sdk/x86_64/usr/lib/swift/clang -use-ld=lld -Xlinker -lswift_RegexParser $in builddir/arkrt/*.a -o $out
+  description = SWIFT LINK $out
+
+rule ar
+  command = ar rcs $out $in
+  description = AR $out
+
+rule copy_to_dir
+  command = mkdir -p $out && for f in $in; do if [ -d "$$f" ]; then cp -r $$f/* $out/ 2>/dev/null || true; else cp -r $$f $out/; fi; done
+  description = COPY $in to $out/
+
