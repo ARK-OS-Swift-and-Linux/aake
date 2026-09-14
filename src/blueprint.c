@@ -260,7 +260,7 @@ static void process_ark_file(const char *dir_path, const char *ark_filename,
             fprintf(nf, "build %s/%s: link %s\n", dir_path + 2, name, out_objs);
           }
         } else if (strcmp(type, "efi_executable") == 0) {
-          fprintf(nf, "build builddir/BOOT%s.EFI: efi_link %s\n",
+          fprintf(nf, "build ../builddir/BOOT%s.EFI: efi_link %s\n",
                   is_x86_64 ? "X64" : "AA64", out_objs);
         } else if (strcmp(type, "static_library") == 0) {
           fprintf(nf, "build %s/lib%s.a: ar %s\n", dir_path + 2, name,

@@ -36,19 +36,19 @@ static int build_native_graphics(void) {
   char cmd[4096];
   int rc;
 
-  printf("\033[1;36m[GRAPHICS]\033[0m Building native input stack...\n");
-  snprintf(cmd, sizeof(cmd), "make -C %s/arkrt/Input", repo);
-  rc = run_cmd_checked(cmd);
-  if (rc != 0) {
-    printf("\033[1;31m[GRAPHICS]\033[0m Input stack build failed\n");
-    return 1;
-  }
-
   printf("\033[1;36m[GRAPHICS]\033[0m Building native graphics stack...\n");
   snprintf(cmd, sizeof(cmd), "make -C %s/arkrt/Graphics", repo);
   rc = run_cmd_checked(cmd);
   if (rc != 0) {
     printf("\033[1;31m[GRAPHICS]\033[0m Graphics stack build failed\n");
+    return 1;
+  }
+
+  printf("\033[1;36m[GRAPHICS]\033[0m Building native input stack...\n");
+  snprintf(cmd, sizeof(cmd), "make -C %s/arkrt/Input", repo);
+  rc = run_cmd_checked(cmd);
+  if (rc != 0) {
+    printf("\033[1;31m[GRAPHICS]\033[0m Input stack build failed\n");
     return 1;
   }
 

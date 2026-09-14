@@ -135,7 +135,7 @@ static void pack_boot_x86_64(void) {
   // Create EFI System Partition (FAT32)
   system("rm -f builddir/efi_part.img");
   system(
-      "dd if=/dev/zero of=builddir/efi_part.img bs=1M count=300 2>/dev/null");
+      "dd if=/dev/zero of=builddir/efi_part.img bs=1M count=800 2>/dev/null");
 
   char cmd[512];
   snprintf(cmd, sizeof(cmd),

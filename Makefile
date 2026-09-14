@@ -8,7 +8,7 @@ TARGET=aake
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET) -lm
+	$(CC) $(OBJS) -o $(TARGET) -lm && cp aake ../
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
