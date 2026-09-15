@@ -380,9 +380,10 @@ void package_sign(void) {
   system("mkdir -p builddir");
   system("python3 tools/sign_binaries.py builddir/signature_vault.json "
          "builddir/arkrt/init_bin:/init "
-         "builddir/arkrt/graphics/ark_display:/system/bin/ark_display "
+         "builddir/arkrt/bootanim_bin:/system/bin/BootAnim "
          "arkrt/Graphics/GTK3/Support/seatd/builddir/seatd:/system/bin/seatd "
-         "arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston:/system/bin/weston");
+         "arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston:/system/bin/weston "
+         "builddir/arkrt/sash_bin:/system/bin/sh");
 }
 
 void package_images(bool is_arm64) {
@@ -412,10 +413,10 @@ void package_images(bool is_arm64) {
          "builddir/initramfs_ext/system/ 2>/dev/null || true");
   system("cp builddir/signature_vault.json builddir/initramfs_ext/signature_vault.json");
 
-  // Copy the GTK3 display app built by aake
-  system("cp builddir/arkrt/graphics/ark_display "
-         "builddir/initramfs_ext/system/bin/ark_display 2>/dev/null && "
-         "chmod +x builddir/initramfs_ext/system/bin/ark_display || true");
+  // Copy the BootAnim app built by aake
+  system("cp builddir/arkrt/bootanim_bin "
+         "builddir/initramfs_ext/system/bin/BootAnim 2>/dev/null && "
+         "chmod +x builddir/initramfs_ext/system/bin/BootAnim || true");
 
   // Copy seatd and weston binaries
   system("cp arkrt/Graphics/GTK3/Support/seatd/builddir/seatd "
@@ -425,6 +426,10 @@ void package_images(bool is_arm64) {
   system("cp arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston "
          "builddir/initramfs_ext/system/bin/weston 2>/dev/null && "
          "chmod +x builddir/initramfs_ext/system/bin/weston || true");
+         
+  // Copy fallback shell
+  system("cp builddir/arkrt/sash_bin builddir/initramfs_ext/system/bin/sh 2>/dev/null && "
+         "chmod +x builddir/initramfs_ext/system/bin/sh || true");
 
   // Copy built wayland/xkbcommon libs from the meson build
   system("cp -P builddir/arkrt/graphics/lib/*.so* "
@@ -440,9 +445,10 @@ void package_images(bool is_arm64) {
 
   // Resolve all shared lib dependencies for init and the display app via ldd
   system("ldd builddir/arkrt/init_bin "
-         "builddir/arkrt/graphics/ark_display "
+         "builddir/arkrt/bootanim_bin "
          "arkrt/Graphics/GTK3/Support/seatd/builddir/seatd "
          "arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston "
+         "builddir/initramfs_ext/system/bin/sh "
          "builddir/initramfs_ext/usr/local/lib/libweston-17/*.so "
          "2>/dev/null | grep -o '/[^ "
          "]*\\.so[^ ]*' | sort -u | xargs -I {} cp -Ln {} "
@@ -453,9 +459,11 @@ void package_images(bool is_arm64) {
   system("find arkrt/Graphics/GTK3/Graphics/libepoxy/builddir -name \"*.so*\" -type f -exec cp -a {} builddir/initramfs_ext/lib/ \\; 2>/dev/null || true");
 
   system("rm -rf builddir/initramfs_ext/lib64 && ln -sf lib builddir/initramfs_ext/lib64");
-  system("mkdir -p builddir/initramfs_ext/usr/lib/swift/lib/swift && "
+  system("mkdir -p builddir/initramfs_ext/usr/lib/swift/lib/swift builddir/initramfs_ext/usr/lib/gbm builddir/initramfs_ext/usr/lib/dri && "
          "ln -sf /lib builddir/initramfs_ext/usr/lib/swift/lib/swift/linux && "
          "ln -sf /lib/* builddir/initramfs_ext/usr/lib/ 2>/dev/null || true");
+  system("ln -sf /lib/dri_gbm.so builddir/initramfs_ext/usr/lib/gbm/dri_gbm.so 2>/dev/null || true");
+  system("ln -sf /lib/*_dri.so builddir/initramfs_ext/usr/lib/dri/ 2>/dev/null || true");
   system("cp -L /usr/lib/swift/lib/swift/linux/lib*.so "
          "builddir/initramfs_ext/lib/ 2>/dev/null || cp -L "
          "/usr/lib/swift/linux/lib*.so builddir/initramfs_ext/lib/ 2>/dev/null "

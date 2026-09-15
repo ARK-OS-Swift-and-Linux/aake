@@ -68,23 +68,6 @@ static int build_native_graphics(void) {
     return 1;
   }
 
-  // --- Compile the GTK3 display app ---
-  printf("\033[1;35m[GRAPHICS]\033[0m Building GTK3 display app...\n");
-  snprintf(cmd, sizeof(cmd),
-           "mkdir -p %s/builddir/arkrt/graphics && "
-           "export PKG_CONFIG_PATH=$(find %s/arkrt/Graphics -name 'meson-uninstalled' -o -name 'pkgconfig' | tr '\\n' ':') && "
-           "cc -O2 -Wall -Wextra -Werror=format-security "
-           "$(pkg-config --cflags gtk+-3.0) "
-           "%s/arkrt/Graphics/GTK3/app/ark_hi.c "
-           "$(pkg-config --libs gtk+-3.0) "
-           "-o %s/builddir/arkrt/graphics/ark_display",
-           repo, repo, repo, repo);
-  rc = run_cmd_checked(cmd);
-  if (rc != 0) {
-    printf("\033[1;31m[GRAPHICS]\033[0m GTK3 app build failed\n");
-    return 1;
-  }
-  printf("\033[1;32m[GRAPHICS]\033[0m GTK3 display app built successfully\n");
 
   // --- Collect built libraries into builddir ---
   snprintf(cmd, sizeof(cmd),
@@ -157,7 +140,7 @@ static void run_test(bool is_x86_64, bool is_uefi) {
   if (is_x86_64) {
     if (is_uefi) {
       snprintf(cmd, sizeof(cmd),
-               "qemu-system-x86_64 -m 2G -enable-kvm -vga virtio -drive "
+               "qemu-system-x86_64 -m 2G -enable-kvm -vga std -device usb-ehci -device usb-kbd -device usb-mouse -drive "
                "if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/x64/"
                "OVMF_CODE.4m.fd -drive if=pflash,format=raw,file=ovmf_vars.fd "
                "-drive file=finished/boot.img,format=raw -serial stdio");
@@ -165,7 +148,7 @@ static void run_test(bool is_x86_64, bool is_uefi) {
       system("cp /usr/share/OVMF/x64/OVMF_VARS.4m.fd ovmf_vars.fd 2>/dev/null");
     } else {
       snprintf(cmd, sizeof(cmd),
-               "qemu-system-x86_64 -m 2G -enable-kvm -vga virtio -drive "
+               "qemu-system-x86_64 -m 2G -enable-kvm -vga std -device usb-ehci -device usb-kbd -device usb-mouse -drive "
                "file=finished/boot.img,format=raw -serial stdio");
     }
   } else {
@@ -408,8 +391,12 @@ int main(int argc, char **argv) {
           "builddir/arkrt/ \\; ;"
           "find builddir/arkrt/%s -name '*.a' -exec cp -f {} builddir/arkrt/ \\; ;"
           "find builddir/arkrt/%s -name 'Init' -type f -exec cp {} "
-          "builddir/arkrt/init_bin \\;",
-          arkrt_packages[p], arkrt_packages[p], arkrt_packages[p]);
+          "builddir/arkrt/init_bin \\; ;"
+          "find builddir/arkrt/%s -name 'BootAnim' -type f -exec cp {} "
+          "builddir/arkrt/bootanim_bin \\; ;"
+          "find builddir/arkrt/%s -name 'sash' -type f -exec cp {} "
+          "builddir/arkrt/sash_bin \\;",
+          arkrt_packages[p], arkrt_packages[p], arkrt_packages[p], arkrt_packages[p], arkrt_packages[p]);
       system(flatten_cmd);
 
       int ret = 1;
