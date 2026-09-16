@@ -378,17 +378,17 @@ static void pack_boot_arm64(void) {
 
 void package_sign(void) {
   system("mkdir -p builddir");
-  system("python3 tools/sign_binaries.py builddir/signature_vault.json "
-         "builddir/arkrt/init_bin:/init "
-         "builddir/arkrt/bootanim_bin:/system/bin/BootAnim "
-         "arkrt/Graphics/GTK3/Support/seatd/builddir/seatd:/system/bin/seatd "
-         "arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston:/system/bin/weston "
-         "builddir/arkrt/sash_bin:/system/bin/sh");
+  system("python3 tools/generate_keys.py sign builddir/arkrt/init_bin 2>/dev/null || true");
+  system("python3 tools/generate_keys.py sign builddir/arkrt/bootanim_bin 2>/dev/null || true");
+  system("python3 tools/generate_keys.py sign arkrt/Graphics/GTK3/Support/seatd/builddir/seatd 2>/dev/null || true");
+  system("python3 tools/generate_keys.py sign arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston 2>/dev/null || true");
+  system("python3 tools/generate_keys.py sign builddir/arkrt/sash_bin 2>/dev/null || true");
+  system("python3 tools/generate_keys.py sign builddir/arkrt/ls_bin 2>/dev/null || true");
 }
 
 void package_images(bool is_arm64) {
   system("mkdir -p finished builddir/system/frameworks "
-         "builddir/system/services builddir/vendor");
+         "builddir/system/services builddir/vendor builddir/initramfs_ext/keys");
 
   if (is_arm64) {
     system("cp kernel/prebuilts/arm64 builddir/arm64 2>/dev/null || true");
@@ -404,31 +404,41 @@ void package_images(bool is_arm64) {
          "builddir/initramfs_ext/system/services builddir/initramfs_ext/run "
          "builddir/initramfs_ext/tmp builddir/initramfs_ext/var/log "
          "builddir/initramfs_ext/system/bin builddir/initramfs_ext/dev "
-         "builddir/initramfs_ext/proc builddir/initramfs_ext/sys builddir/initramfs_ext/etc");
+         "builddir/initramfs_ext/proc builddir/initramfs_ext/sys builddir/initramfs_ext/etc "
+         "builddir/initramfs_ext/keys");
   system("echo 'root:x:0:0:root:/root:/bin/sh\n' > builddir/initramfs_ext/etc/passwd && "
          "echo 'root:x:0:\n' > builddir/initramfs_ext/etc/group");
-  system("cp builddir/arkrt/init_bin builddir/initramfs_ext/init && chmod +x "
-         "builddir/initramfs_ext/init");
+         
+  system("cp keys/MAIN.pub builddir/initramfs_ext/keys/MAIN.pub 2>/dev/null || true");
+  system("cp keys/BASE.pub builddir/initramfs_ext/keys/BASE.pub 2>/dev/null || true");
+  system("cp keys/BASE.cert builddir/initramfs_ext/keys/BASE.cert 2>/dev/null || true");
+  system("cp keys/WIDE.key builddir/initramfs_ext/keys/WIDE.key 2>/dev/null || true");
+
+  system("cp builddir/arkrt/init_bin builddir/initramfs_ext/init && "
+         "cp builddir/arkrt/init_bin.sig builddir/initramfs_ext/init.sig 2>/dev/null || true && "
+         "chmod +x builddir/initramfs_ext/init");
   system("cp builddir/system/apps/setup_app/ui_test "
          "builddir/initramfs_ext/system/ 2>/dev/null || true");
-  system("cp builddir/signature_vault.json builddir/initramfs_ext/signature_vault.json");
 
   // Copy the BootAnim app built by aake
-  system("cp builddir/arkrt/bootanim_bin "
-         "builddir/initramfs_ext/system/bin/BootAnim 2>/dev/null && "
+  system("cp builddir/arkrt/bootanim_bin builddir/initramfs_ext/system/bin/BootAnim 2>/dev/null && "
+         "cp builddir/arkrt/bootanim_bin.sig builddir/initramfs_ext/system/bin/BootAnim.sig 2>/dev/null || true && "
          "chmod +x builddir/initramfs_ext/system/bin/BootAnim || true");
 
   // Copy seatd and weston binaries
-  system("cp arkrt/Graphics/GTK3/Support/seatd/builddir/seatd "
-         "builddir/initramfs_ext/system/bin/seatd 2>/dev/null && "
+  system("cp arkrt/Graphics/GTK3/Support/seatd/builddir/seatd builddir/initramfs_ext/system/bin/seatd 2>/dev/null && "
+         "cp arkrt/Graphics/GTK3/Support/seatd/builddir/seatd.sig builddir/initramfs_ext/system/bin/seatd.sig 2>/dev/null || true && "
          "chmod +x builddir/initramfs_ext/system/bin/seatd || true");
   
-  system("cp arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston "
-         "builddir/initramfs_ext/system/bin/weston 2>/dev/null && "
+  system("cp arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston builddir/initramfs_ext/system/bin/weston 2>/dev/null && "
+         "cp arkrt/Graphics/GTK3/Graphics/weston/builddir/frontend/weston.sig builddir/initramfs_ext/system/bin/weston.sig 2>/dev/null || true && "
          "chmod +x builddir/initramfs_ext/system/bin/weston || true");
          
   // Copy fallback shell
   system("cp builddir/arkrt/sash_bin builddir/initramfs_ext/system/bin/sh 2>/dev/null && "
+         "cp builddir/arkrt/sash_bin.sig builddir/initramfs_ext/system/bin/sh.sig 2>/dev/null || true && "
+         "cp builddir/arkrt/ls_bin builddir/initramfs_ext/system/bin/ls 2>/dev/null && "
+         "cp builddir/arkrt/ls_bin.sig builddir/initramfs_ext/system/bin/ls.sig 2>/dev/null || true && "
          "chmod +x builddir/initramfs_ext/system/bin/sh || true");
 
   // Copy built wayland/xkbcommon libs from the meson build

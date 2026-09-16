@@ -136,6 +136,14 @@ static void generate_cross_file(bool is_x86_64) {
 }
 
 static void run_test(bool is_x86_64, bool is_uefi) {
+  printf("\033[1;33m[VERIFIED BOOT]\033[0m Checking hardware trust chain...\n");
+  int vb_res = system("python3 tools/generate_keys.py verify-boot");
+  if (vb_res != 0) {
+    printf("\033[1;31m[ERROR]\033[0m Verified Boot check failed! Halting.\n");
+    return;
+  }
+  printf("\033[1;32m[VERIFIED BOOT]\033[0m Hardware trust chain valid.\n");
+
   char cmd[1024];
   if (is_x86_64) {
     if (is_uefi) {
@@ -143,19 +151,19 @@ static void run_test(bool is_x86_64, bool is_uefi) {
                "qemu-system-x86_64 -m 2G -enable-kvm -vga std -device usb-ehci -device usb-kbd -device usb-mouse -drive "
                "if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/x64/"
                "OVMF_CODE.4m.fd -drive if=pflash,format=raw,file=ovmf_vars.fd "
-               "-drive file=finished/boot.img,format=raw -serial stdio");
+               "-drive file=finished/boot.img,format=raw -drive file=vb.img,format=raw -serial stdio");
       
       system("cp /usr/share/OVMF/x64/OVMF_VARS.4m.fd ovmf_vars.fd 2>/dev/null");
     } else {
       snprintf(cmd, sizeof(cmd),
                "qemu-system-x86_64 -m 2G -enable-kvm -vga std -device usb-ehci -device usb-kbd -device usb-mouse -drive "
-               "file=finished/boot.img,format=raw -serial stdio");
+               "file=finished/boot.img,format=raw -drive file=vb.img,format=raw -serial stdio");
     }
   } else {
     snprintf(cmd, sizeof(cmd),
              "qemu-system-aarch64 -M virt -cpu max -m 2G -device "
              "virtio-gpu-pci -device virtio-keyboard-pci -drive "
-             "file=finished/rpi4/rpi4.img,format=raw,if=virtio -serial stdio");
+             "file=finished/rpi4/rpi4.img,format=raw,if=virtio -drive file=vb.img,format=raw -serial stdio");
   }
   printf("\033[1;34m[TEST]\033[0m Running: %s\n", cmd);
   system(cmd);
@@ -358,7 +366,7 @@ int main(int argc, char **argv) {
     // 3. Build ArkRT Swift packages
   {
     const char *arkrt_packages[] = {"Kernel",   "Network", "Service", "System",
-                                    "Terminal", "Input",   "Init"};
+                                    "Terminal", "Input",   "Init", "Coreutils"};
     int num_pkgs = sizeof(arkrt_packages) / sizeof(arkrt_packages[0]);
     int any_failed = 0;
 
@@ -377,9 +385,9 @@ int main(int argc, char **argv) {
       char cmd[1024];
       snprintf(
           cmd, sizeof(cmd),
-          "swift build --package-path arkrt/%s --build-path builddir/arkrt/%s "
+          "swift build --package-path arkrt/%s --scratch-path builddir/arkrt/.shared_build "
           "2>&1; echo $? > /tmp/arkrt_build_rc",
-          arkrt_packages[p], arkrt_packages[p]);
+          arkrt_packages[p]);
 
       system(cmd);
 
@@ -387,16 +395,17 @@ int main(int argc, char **argv) {
       char flatten_cmd[1024];
       snprintf(
           flatten_cmd, sizeof(flatten_cmd),
-          "find builddir/arkrt/%s -name '*.swiftmodule' -exec cp -rf {} "
-          "builddir/arkrt/ \\; ;"
-          "find builddir/arkrt/%s -name '*.a' -exec cp -f {} builddir/arkrt/ \\; ;"
-          "find builddir/arkrt/%s -name 'Init' -type f -exec cp {} "
-          "builddir/arkrt/init_bin \\; ;"
-          "find builddir/arkrt/%s -name 'BootAnim' -type f -exec cp {} "
-          "builddir/arkrt/bootanim_bin \\; ;"
-          "find builddir/arkrt/%s -name 'sash' -type f -exec cp {} "
-          "builddir/arkrt/sash_bin \\;",
-          arkrt_packages[p], arkrt_packages[p], arkrt_packages[p], arkrt_packages[p], arkrt_packages[p]);
+          "find builddir/arkrt/.shared_build -name '*.swiftmodule' -exec cp -rf {} "
+          "builddir/arkrt/ \\; 2>/dev/null;"
+          "find builddir/arkrt/.shared_build -name '*.a' -exec cp -f {} builddir/arkrt/ \\; 2>/dev/null;"
+          "find builddir/arkrt/.shared_build -name 'Init' -type f -exec cp {} "
+          "builddir/arkrt/init_bin \\; 2>/dev/null;"
+          "find builddir/arkrt/.shared_build -name 'BootAnim' -type f -exec cp {} "
+          "builddir/arkrt/bootanim_bin \\; 2>/dev/null;"
+          "find builddir/arkrt/.shared_build -name 'sash' -type f -exec cp {} "
+          "builddir/arkrt/sash_bin \\; 2>/dev/null;"
+          "find builddir/arkrt/.shared_build -name 'ls' -type f -exec cp {} "
+          "builddir/arkrt/ls_bin \\; 2>/dev/null; true");
       system(flatten_cmd);
 
       int ret = 1;
